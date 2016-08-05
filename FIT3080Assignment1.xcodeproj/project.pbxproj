@@ -6,10 +6,15 @@
 	objectVersion = 46;
 	objects = {
 
+/* Begin PBXFileReference section */
+		F7D6712C1D5419100093FF58 /* FIT3080Assignment1.py */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.script.python; path = FIT3080Assignment1.py; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
 /* Begin PBXGroup section */
 		F7D671211D5417F30093FF58 = {
 			isa = PBXGroup;
 			children = (
+				F7D6712C1D5419100093FF58 /* FIT3080Assignment1.py */,
 			);
 			sourceTree = "<group>";
 		};
