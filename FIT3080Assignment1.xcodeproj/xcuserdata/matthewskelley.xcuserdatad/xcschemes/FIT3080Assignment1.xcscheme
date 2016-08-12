@@ -61,6 +61,10 @@
             argument = "FIT3080Assignment1.py"
             isEnabled = "YES">
          </CommandLineArgument>
+         <CommandLineArgument
+            argument = "BBWEWBW"
+            isEnabled = "YES">
+         </CommandLineArgument>
       </CommandLineArguments>
       <AdditionalOptions>
       </AdditionalOptions>
