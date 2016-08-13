@@ -14,10 +14,10 @@ print(puzzleString[0])
 # Input: state as string
 # Output: true or false
 def Goal(stateIn):
-    if stateIn in goalSet:
-        return true
+    if "".join(stateIn) in goalSet:
+        return 1
     else:
-        return false
+        return 0
 
 # Method to return a list of applicable operations
 # Input: state as a string
@@ -28,7 +28,7 @@ def ApplicableOps(stateIn):
     while (stateIn[emptyIndex] != 'E'):
         emptyIndex += 1
     leftMove = 1
-    while emptyIndex - leftMove >= 0:
+    while emptyIndex - leftMove >= 0 and leftMove <= 3:
         opsList.append(str(leftMove) + "L")
         #newState = list(stateIn)
         #newState[emptyIndex] = stateIn[emptyIndex - leftMove]
@@ -36,7 +36,7 @@ def ApplicableOps(stateIn):
         #statesOut.append(newState)
         leftMove += 1
     rightMove = 1
-    while emptyIndex + rightMove < len(stateIn):
+    while emptyIndex + rightMove < len(stateIn) - 1 and rightMove <= 3:
         opsList.append(str(rightMove) + "R")
         #newState = list(stateIn)
         #newState[emptyIndex] = stateIn[emptyIndex + rightMove]
@@ -72,25 +72,49 @@ class Node:
         self.depth = depthIn
         self.children = [None,None,None,None,None,None]
 
-headNode = Node(None,puzzleString,0)
-
-
-print(headNode.state)
+pathList = []
+opList = []
 
 # Backtrack1
 def Backtrack1(stateListIn):
+    global pathList
+    global opList
     state = stateListIn[0]
+    # ANCESTOR FAIL
     if state in stateListIn[1:]:
-        return false
+        print("ANCESTOR")
+        return 0
+    # GOAL SUCCESS
     if Goal(state):
-        return true
+        print("GOAL")
+        print(state)
+        return 1
     # Check if it's a DEADEND
     # Check BOUND EXCEEDED
     ops = ApplicableOps(state)
     while ops != []:
-        
-    return false
+        op = ops.pop(0)
+        newState = Op(op,state)
+        newStateList = [newState] + stateListIn
+        path = Backtrack1(newStateList)
+        # Check the path
+        if path:
+            opList = [op] + opList
+            pathList = [state] + pathList
+            return 1
+    # DEADEND FAIL
+    print("DEADEND")
+    return 0
 
+
+# Test Backtrack1
+Backtrack1([puzzleString])
+print("FINISH")
+
+for i in range(len(pathList)):
+    print("".join(pathList[i]), opList[i])
+
+"""
 # Testing how the pointers for nodes would work
 print(Op("1L",puzzleString))
 N1 = Node(None,puzzleString,0)
@@ -100,5 +124,6 @@ N1 = None
 print(N2.parent)
 if N2.parent == None:
     print("HERE")
+"""
 
 
