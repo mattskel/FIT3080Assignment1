@@ -1,7 +1,11 @@
+# FIT3080 Assignment 1
+# M. Skelley
+# Sliding block puzzle problem
+# Implement tree and graph search strategies to solve the sliding block puzzle problem
+# Specifically implement Backtrack, DLS and A
+
 import sys
 import time
-
-#from __future__ import print_function
 
 # The set of all possible goal States
 goalSet = ["EWWWBBB","WEWWBBB","WWEWBBB","WWWEBBB","WWWBEBB","WWWBBEB","WWWBBBE"]
