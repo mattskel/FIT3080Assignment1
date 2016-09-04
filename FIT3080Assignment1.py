@@ -1,21 +1,19 @@
 import sys
+import time
 
 #from __future__ import print_function
 
 # The set of all possible goal States
-goalSet = ["EBBBWWW","BEBBWWW","BBEBWWW","BBBEWWW","BBBWEWW","BBBWWEW","BBBWWWE"]
+goalSet = ["EWWWBBB","WEWWBBB","WWEWBBB","WWWEBBB","WWWBEBB","WWWBBEB","WWWBBBE"]
 
-# Reading the input
+#Reading the input
 puzzleString = list(sys.argv[1])
 procedureName = sys.argv[2]
 outputFileName = sys.argv[3]
-flag = sys.argv[4]
-# Test
-print("puzzleString: " + "".join(puzzleString))
-print("procedureName: " + procedureName)
-print("outputFileName: " + outputFileName)
-print("flag: " + flag)
-print("\n")
+flag = int(sys.argv[4])
+
+# Create and open the output file
+f = open(outputFileName + ".txt", 'w')
 
 # Method to check if a string is a goal
 # Input: state as string
@@ -54,7 +52,6 @@ def Op(opIn, stateIn):
         emptyIndex += 1
     if opIn[1] == "L":
         newState = list(stateIn)
-        #print(newState)
         newState[emptyIndex] = stateIn[emptyIndex - int(opIn[0])]
         newState[emptyIndex - int(opIn[0])] = 'E'
     elif opIn[1] == "R":
@@ -88,50 +85,69 @@ class Node:
         self.f = self.g + self.h
 
 
-
-pathList = []
-opList = []
-depth = 0
+def Backtrack1_aux(startState):
+    currentNode = Node(startState, None, "start")
+    currentNode.depth = 0
+    Backtrack1([startState], currentNode)
 
 # Backtrack1
-def Backtrack1(stateListIn):
-    global depth
+def Backtrack1(stateListIn, n):
+    global flag
     global pathList
     global opList
-    print(len(stateListIn))
-    depth += 1
-    print(depth)
+    currentNode = n
     state = stateListIn[0]
-    print(state)
     # ANCESTOR FAIL
     if state in stateListIn[1:]:
-        print("ANCESTOR")
-        depth -= 1
+        currentNode = currentNode.parent
+        if flag > 0:
+            print("ANCESTOR")
+            f.write("ANCESTOR\n\n")
         return 0
     # GOAL SUCCESS
     if Goal(state):
-        print("GOAL")
-        print(state)
-        depth -= 1
+        PrintPath(currentNode)
         return 1
-    # Check if it's a DEADEND
-    # Check BOUND EXCEEDED
+    # DEADEND
+    # BOUND EXCEEDED
+    if len(stateListIn) > 10:
+        if flag > 0:
+            print("BOUND")
+            f.write("BOUND\n\n")
+        return 0
     ops = ApplicableOps(state)
     while ops != []:
         op = ops.pop(0)
-        print(op)
         newState = Op(op,state)
         newStateList = [newState] + stateListIn
-        path = Backtrack1(newStateList)
+        opList.append(op)
+        m = Node(newState,currentNode,op)
+        m.depth = m.parent.depth + 1
+        if int(op[0]) > 1:
+            m.pathCost = m.parent.pathCost + int(op[0]) - 1
+        else:
+            m.pathCost = m.parent.pathCost + 1
+        if flag > 0:
+            print(op)
+            f.write("Operator: " + op + "\n")
+            print(m.id)
+            f.write("Identifier: " + m.id + "\n")
+            print(ApplicableOps(newState))
+            f.write("Available Ops: " + str(ApplicableOps(newState)) + "\n")
+            print(opList)
+            f.write("Moves in path: " + str(opList) + "\n\n")
+            flag = flag - 1
+        path = Backtrack1(newStateList,m)
         # Check the path
         if path:
-            opList = [op] + opList
-            pathList = [state] + pathList
-            depth -= 1
             return 1
-    # DEADEND FAIL
-    print("DEADEND")
-    depth -= 1
+        # Pop from the op list
+        opList.pop()
+    # NO MORE OPS FAIL
+    currentNode = currentNode.parent
+    if flag > 0:
+        print("NO MORE OPS\n")
+        f.write("NO MORE OPS\n\n")
     return 0
 
 # The following methods DLS and A add nodes from M to OPEN
@@ -140,10 +156,10 @@ def Backtrack1(stateListIn):
 #DLS
 def DLS(M,OPEN):
     # Set L to some arbitrary depth
-    L = 7
+    L = 10
     # Reverse to ensure that the priority moves are put at the front of the list
     for m in reversed(M):
-        if m.depth < L:
+        if m.depth <= L:
             OPEN.insert(0,m)
 
 # A
@@ -151,71 +167,97 @@ def A(M,OPEN):
     for m in M:
         m.Setf()
         i = 0
-        while i < len(OPEN) and m.f > OPEN[i].f:
+        # Reordering based on the f value
+        while i < len(OPEN) and m.f >= OPEN[i].f:
+            i += 1
+        # Reordering based on move preferences
+        movePref = [1,3,2] # The preferences for moves 1, 2 and 3
+        while i < len(OPEN) and m.f == OPEN[i].f and movePref[int(m.operation[0]) - 1] < movePref[int(OPEN[i].operation[0]) - 1]:
             i += 1
         OPEN.insert(i,m)
 
 
-# Calculate Heuristic Value
+# Method to calculate the heuristic value
 # The heuristic is the sum of individual distances of each B and W from a goal configuration
+# Input: State
+# Output: h, the heuristic value
 def CalculateHeuristic(stateIn):
-    # Find the Empty space
     i = 0
-    while i < len(stateIn) and stateIn[i] != 'E':
+    tmpState = []
+    while i <len(stateIn):
+        if stateIn[i] != 'E':
+            tmpState.append(stateIn[i])
         i += 1
-    # Calculate the number of out fo place spaces using the goalSet
-    goal = list(goalSet[i])
+    goal = list("WWWBBB")
     h = 0
-    #    for i in range(len(goal)):
-    #        if goal[i] != stateIn[i]:
-    #            h += 1
-    
     for i in range(len(goal)):
         j = i
-        if stateIn[i] == 'B':
-            while j > 0 and goal[j] != 'B':
+        if tmpState[i] == 'W':
+            while j > 0 and goal[j] != 'W':
                 j -= 1
             goal[j] = 'X'
             h += i - j
-        elif stateIn[i] == 'W':
-            while j < len(goal) - 1 and goal[j] != 'W':
+        elif tmpState[i] == 'B':
+            while j < len(goal) - 1 and goal [j] != 'B':
                 j += 1
             goal[j] = 'X'
-            h += j - i
+            h += j - 1
     return h
 
 # Function to print when a new Node is generated
 def GeneratedPrint(nodeIn):
     print("GENERATED")
+    f.write("GENERATED\n")
     print("Operator: " + nodeIn.operation)
+    f.write("Operator: " + nodeIn.operation + "\n")
     print("Identifier: " + nodeIn.id)
+    f.write("Identifier: " + nodeIn.id + "\n")
     print("ParentId: " + nodeIn.parent.id)
+    f.write("ParentId: " + nodeIn.parent.id + "\n")
     if procedureName == "A":
         print("g: " + str(nodeIn.g))
+        f.write("g: " + str(nodeIn.g) + "\n")
         print("h: " + str(nodeIn.h))
+        f.write("h: " + str(nodeIn.h) + "\n")
         print("f: " + str(nodeIn.f))
+        f.write("f: " + str(nodeIn.f) + "\n")
     else:
         print("pathCost: " + str(nodeIn.pathCost))
+        f.write("pathCost: " + str(nodeIn.pathCost) + "\n")
     print("\n")
+    f.write("\n")
 
 # Funtion to print when a node is expanded
 def ExpandedPrint(nodeIn, expansionOrderIn, OPENIn, CLOSEDIn):
     print("EXPANDED")
+    f.write("EXPANDED\n")
     print("Identifier: " + nodeIn.id)
+    f.write("Identifier: " + nodeIn.id + "\n")
     print("Expansion Order: " + str(expansionOrderIn))
+    f.write("Expansion Order: " + str(expansionOrderIn) + "\n")
     if procedureName == "A":
         print("g: " + str(nodeIn.g))
+        f.write("g: " + str(nodeIn.g))
         print("h: " + str(nodeIn.h))
+        f.write("h: " + str(nodeIn.h))
         print("f: " + str(nodeIn.f))
+        f.write("f: " + str(nodeIn.f))
     else:
         print("pathCost: " + str(nodeIn.pathCost))
+        f.write("pathCost: " + str(nodeIn.pathCost))
     print("OPEN:"),
+    f.write("\nOPEN: ")
     for n in OPENIn:
         print(n.id),
+        f.write(n.id)
     print("\nCLOSED:"),
+    f.write("\nCLOSED: ")
     for n in CLOSEDIn:
         print(n.id),
+        f.write(n.id + " ")
     print("\n")
+    f.write("\n")
+    f.write("\n")
 
 # Method to print the path given a goal node
 # Input: a goal node
@@ -227,9 +269,8 @@ def PrintPath(goalNodeIn):
         pathList.append(currentNode)
         currentNode = currentNode.parent
     for n in reversed(pathList):
-        print(n.operation),
-        print("".join(n.state)),
-        print(n.pathCost)
+        print(n.operation + "\t" + "".join(n.state) + "\t" + str(n.pathCost) + "\n"),
+        f.write(n.operation + "\t" + "".join(n.state) + "\t" + str(n.pathCost) + "\n")
 
 
 
@@ -237,10 +278,10 @@ def PrintPath(goalNodeIn):
 # Implement the Graphsearch Algorithm detailed in the lectures
 # Depending on what the user specifies in the command line implement DLS or A* to order open
 def Graphsearch(startState):
-    
+    localFlag = flag
     # Create our start node
     #state, parent, operation
-    s = Node(startState, None, "start");
+    s = Node(startState, None, "start")
     # implement a set G that will represent our graph
     G = [s]
     # Initialise the OPEN set with startNode
@@ -257,18 +298,15 @@ def Graphsearch(startState):
         n = OPEN[0]
         CLOSED.append(OPEN.pop(0))
         # 3.
-#        print(n.state)
-#        print(n.operation)
         if Goal(n.state):
             PrintPath(n)
             return 1
         # 4. Expand node n generating a set M of its children
-        ExpandedPrint(n,expansionOrder,OPEN,CLOSED)
+        if localFlag > 0:
+            ExpandedPrint(n,expansionOrder,OPEN,CLOSED)
         expansionOrder += 1
         M = []
         operationList = ApplicableOps(n.state)
-#        print("operationList:")
-#        print(operationList)
         for op in operationList:
             newState = Op(op,n.state)
             # Check that this state is not an ancestor
@@ -289,7 +327,8 @@ def Graphsearch(startState):
                 if procedureName == "A":
                     m.Setf()
                 # Node m generated
-                if flag >= 1:
+                if localFlag > 0:
+                    localFlag = localFlag - 1
                     GeneratedPrint(m)
                 M.append(m)
     
@@ -301,34 +340,37 @@ def Graphsearch(startState):
             A(M,OPEN)
         # Add the set M to n as it's children
         n.children = M
-        # Implement one of the schemes
-        #OPEN = M + OPEN
     # OPEN is empty
     # Exit with failure
     return 0
 
 
-# Test Backtrack1
-#Backtrack1([puzzleString])
-#print("FINISH")
+# Generate Ouptut File
+# Creates an output file called outputFileName
+# Writes the output
+def GenerateOutputFile(goalNodeIn):
+    currentNode = goalNodeIn
+    pathList = []
+    while currentNode != None:
+        pathList.append(currentNode)
+        currentNode = currentNode.parent
+    for n in reversed(pathList):
+        f.write(n.operation + "\t" + "".join(n.state) + "\t" + str(n.pathCost) + "\n")
 
-# Test GraphSearch
-Graphsearch(puzzleString)
 
+# Main
+# Check which search method was called
+start_time = time.time()
 
-"""
-for i in range(len(pathList)):
-    print("".join(pathList[i]), opList[i])
+if procedureName == "BK":
+    pathList = []
+    opList = []
+    Backtrack1_aux(puzzleString)
+elif procedureName == "DLS" or procedureName == "A":
+    Graphsearch(puzzleString)
 
-# Testing how the pointers for nodes would work
-print(Op("1L",puzzleString))
-N1 = Node(None,puzzleString,0)
-N2 = Node(N1,Op("1L",puzzleString),1)
-print(N2.parent.state)
-N1 = None
-print(N2.parent)
-if N2.parent == None:
-    print("HERE")
-"""
+print("\n--- %s seconds ---" % (time.time() - start_time))
+
+f.close()
 
 
